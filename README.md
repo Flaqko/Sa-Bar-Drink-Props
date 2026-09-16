@@ -1,67 +1,63 @@
-# Bar Drink Props v1.0
+# Bar Drink Props v1.1
 
-A lightweight immersion fix for **Grand Theft Auto: San Andreas Classic**.
+Stable transition-safe update for GTA San Andreas Classic + CLEO Redux + CLEO+.
 
-Ambient customers in bars already perform Rockstar's receive/drink animations, but the drink prop can be missing from their hands. **Bar Drink Props** restores the visible bottle without replacing the bar AI or injecting new ped tasks.
+Bar Drink Props gives ambient bar customers a visible `CJ_BEAR_BOTTLE` prop while they receive/drink at bars. v1.1 keeps the original prop behavior and fixes the fast-interior-exit crash discovered with Quick Entry/Exit Skip.
 
-## Features
+## What changed in v1.1
 
-- Adds a visible bottle when an ambient bar customer receives a drink.
-- Detects `Barcustom_get` early so the bottle appears during the handoff rather than halfway through drinking.
-- Keeps the bottle visible through:
-  - `dnk_stndF_loop`
-  - `dnk_stndM_loop`
-- Uses vanilla model **1484 `CJ_BEAR_BOTTLE`**.
-- Attaches to the GTA HAnim **right-hand bone (24)**.
-- Removes the bottle automatically after the drinking sequence ends.
-- Deletes the visual prop if the ped dies or disappears.
-- Does **not** modify the pedestrian's AI or drinking task.
-- Uses a conservative one-ped-per-tick nearby scan.
+- Keeps the original early `Barcustom_get` detection and male/female standing drink loops.
+- Keeps model 1484 (`CJ_BEAR_BOTTLE`) attached to the right hand.
+- Keeps the 1.2-second receive -> drink grace period.
+- Adds an early Entry/Exit transition guard using GTA SA 1.0 US `CEntryExitManager` state.
+- The instant an Entry/Exit starts, tracked CLEO+ render-object handles are abandoned **without** calling `DELETE_RENDER_OBJECT`.
+- Scanning/prop creation stays suspended during the transition and for 1.5 seconds afterward.
+- Removes the old distance-based fast-exit delete path.
+- If the host ped has vanished, died, or is being removed, the cached render handle is forgotten rather than deleted.
+- `DELETE_RENDER_OBJECT` is now reserved for normal stable animation-end cleanup only.
 
-## Why CLEO+ is used
-
-Earlier prototypes used `TASK_PICK_UP_OBJECT`. Injecting that task into Rockstar-controlled ambient bar customers could crash GTA while their existing bar behavior was active.
-
-v1.0 instead uses CLEO+'s render-object attachment system:
-
-- `CREATE_RENDER_OBJECT_TO_CHAR_BONE`
-- `DELETE_RENDER_OBJECT`
-
-The bottle is therefore a **visual attachment only**. Rockstar's original bar behavior stays in control of the ped.
-
-## Requirements
-
-- GTA San Andreas Classic (PC)
-- CLEO Redux
-- CLEO+ with render-object commands
+This prevents the race where Quick Leave streams a bar ped/interior out while CLEO+ is simultaneously deleting the attached render object.
 
 ## Installation
 
-1. Remove any older test versions of Bar Drink Props.
-2. Copy `BarDrinkProps.js` into your GTA San Andreas `CLEO` folder.
-3. Start the game normally.
+Choose **ONE** version. Do not run both.
 
-## Compatibility / Scope
+### Standalone
+Copy:
 
-The mod only reacts to the vanilla bar customer receive/drink animations listed above. It does not create new drinkers, alter bartenders, replace animations, or modify bar interaction logic.
+`Standalone/BarDrinkProps_v1.1[mem].js`
 
-## Performance
+into your GTA SA `CLEO` folder.
 
-- Scan radius: **35 m**
-- Scan interval: **35 ms**
-- Processes **one ped per tick**
-- Maximum tracked drinkers: **12**
+Requires CLEO Redux + CLEO+. The `[mem]` filename tag is required.
 
-This keeps the script responsive enough to catch the drink handoff early while avoiding a heavy bulk ped scan.
+### SA Enhancement Pack
+Remove/replace the old:
 
-## Version History
+`SA-Enhancement-Pack/Modules/BarDrinkProps.js`
 
-### v1.0
+and copy:
 
-- First stable release.
-- Early `Barcustom_get` detection.
-- Vanilla handheld bottle model 1484.
-- CLEO+ visual bone attachment.
-- Right-hand bone attachment.
-- Safe cleanup after the drinking sequence.
-- No ped task injection.
+`SA-Enhancement-Pack/Modules/BarDrinkProps[mem][fs].js`
+
+into the Enhancement Pack `Modules` folder.
+
+The module still uses the existing INI setting:
+
+```ini
+[BarDrinkProps]
+Enabled=1
+```
+
+The `[mem][fs]` filename tags are required because v1.1 reads the Entry/Exit pointer and the Enhancement Pack INI.
+
+## Compatibility / safety
+
+- Target: GTA San Andreas Classic 1.0 US.
+- Designed for CLEO Redux and CLEO+.
+- Compatible with Quick Entry/Exit Skip / fast interior transition mods.
+- Do not install two BarDrinkProps scripts at the same time.
+
+## Confirmed test result
+
+The transition-safe standalone build was tested with repeated bar drinking, fast Quick Leave exits, and the Bar Drinking Redux system. Bottle props remained functional and the previously reproducible exit crash stopped occurring.
